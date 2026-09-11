@@ -1,0 +1,49 @@
+# -----------------------------------------------------------------------------
+# O que NAO entra no repositorio: tudo que e derivado das fontes.
+#
+# Sao 177 dos 179 MB da arvore -- bitstreams do NIST, checkpoints de sintese,
+# projetos Vivado e resultados de simulacao. Todos reconstrutiveis a partir do
+# que esta versionado, e nenhum deles pequeno. Rastrea-los encheria o historico
+# de blobs binarios que mudam a cada execucao e nunca mais saem dele.
+#
+# As excecoes que FICAM: tb/golden_*.txt, porque sao a referencia contra a qual
+# o RTL e conferido -- se forem regerados por engano, a comparacao passa a
+# validar o modelo contra ele mesmo e nada acusa. Versiona-los faz qualquer
+# mudanca de sequencia aparecer no diff.
+# -----------------------------------------------------------------------------
+
+# ---- simulacao (Vivado xsim) ------------------------------------------------
+xsim.dir/
+*.wdb
+*.str
+*.pb
+*.jou
+*.log
+xsim_webtalk.tcl
+webtalk*.backup.jou
+webtalk*.backup.log
+
+# ---- sintese e implementacao ------------------------------------------------
+ooc/impl/
+ooc/reports/
+ooc/cong/
+zcu104/vivado/
+zcu104/reports/
+*.dcp
+*_funcsim.v
+.Xil/
+vivado*.backup.jou
+vivado*.backup.log
+
+# ---- bitstreams e resultados do NIST ----------------------------------------
+# Gerados por tb/tb_prng_nist_dump.sv; 12,5 MB cada.
+nist/*.bin
+nist/resultado*/
+*.saif
+
+# ---- capturas de ILA --------------------------------------------------------
+tools/iladata.csv
+
+# ---- Python -----------------------------------------------------------------
+__pycache__/
+*.pyc
