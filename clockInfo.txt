@@ -1,0 +1,10 @@
+-------------------------------------
+| Tool Version : Vivado v.2026.1
+| Date         : Fri Sep  4 15:55:47 2026
+| Host         : crt.hamilton.local
+| Design       : design_1
+| Device       : xczu7ev-ffvc1156-2-E-
+-------------------------------------
+
+For more information on clockInfo.txt clock routing debug file see https://support.xilinx.com/s/article/000035660?language=en_US
+

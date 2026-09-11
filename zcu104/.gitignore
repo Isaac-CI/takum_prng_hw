@@ -1,0 +1,7 @@
+vivado/
+*.jou
+*.log
+*.str
+.Xil/
+vivado_debug/
+reports_debug/
