@@ -1,16 +1,16 @@
 // -----------------------------------------------------------------------------
 // takum_prng_core_pipe
 //
-// O mesmo PRNG caotico takum32 das outras variantes, com as nove operacoes
+// O mesmo PRNG caotico takum32 das outras variantes, com as dez operacoes
 // DESENROLADAS NO ESPACO: cada uma tem sua propria unidade aritmetica, ligada
 // em cadeia, e o conjunto forma um ANEL de NPIPE estagios que emite um numero
 // POR CICLO.
 //
-// POR QUE DESENROLAR SOZINHO NAO BASTARIA. As nove operacoes de uma iteracao
+// POR QUE DESENROLAR SOZINHO NAO BASTARIA. As dez operacoes de uma iteracao
 // nao sao independentes -- sao uma cadeia de dependencias (1-S alimenta S*A,
-// que alimenta 1,25-B, que alimenta A/B). Instanciar nove
-// unidades e mandar um fluxo so atravessa-las deixaria oito ociosas a cada
-// instante: nove vezes a area para a mesma vazao. O que o desenrolamento
+// que alimenta C4*B, que alimenta C5-B, que alimenta A/B). Instanciar dez
+// unidades e mandar um fluxo so atravessa-las deixaria nove ociosas a cada
+// instante: dez vezes a area para a mesma vazao. O que o desenrolamento
 // habilita nao e paralelismo dentro de uma iteracao, e PIPELINE entre
 // iteracoes.
 //
@@ -43,7 +43,7 @@
 // -- 1-T e 1-S -- estao no mesmo estagio: sao apresentadas juntas e colhidas
 // juntas, em lock-step por construcao. Uma block RAM tem duas portas, entao
 // elas dividem um conjunto so (takum_log_internal_add com WAYS=2). A terceira,
-// 1,25-u, mora tres estagios adiante e precisa do seu. Dois conjuntos em vez
+// 5-4u, mora quatro estagios adiante e precisa do seu. Dois conjuntos em vez
 // de tres: 2 x 53 = 106 RAMB36 dos 312 do xczu7ev, contra os 159 que tres
 // instancias separadas custariam.
 //
@@ -96,11 +96,8 @@ module takum_prng_core_pipe
     localparam int S_PRES_TS = 0;                     // apresenta 1-T e 1-S
     localparam int S_CATCH_TS= S_PRES_TS + LAT_ADD;   // colhe P e Q
     localparam int S_MAP_T   = S_CATCH_TS + 1;        // T' = MU*(T<1/2 ? T : P); u = S*Q
-    // n = 3,6u E a apresentacao de 1,25 - u cabem no MESMO estagio: as duas
-    // leem o registrador que guarda u, entao nenhuma delas fica atras de um
-    // multiplicador. Era exatamente para evitar isso que existia um estagio
-    // separado enquanto o denominador era 5 - 4u.
-    localparam int S_PRES_D  = S_MAP_T + 1;           // n = 3,6u; apresenta 1,25 - u
+    localparam int S_SPLIT   = S_MAP_T + 1;           // n = 14,4u; d4 = 4u
+    localparam int S_PRES_D  = S_SPLIT + 1;           // apresenta C5 - 4u
     localparam int S_CATCH_D = S_PRES_D + LAT_ADD;    // colhe d
     localparam int S_MAP_S   = S_CATCH_D + 1;         // S' = n/d; avanca o LFSR
     localparam int S_PERT    = S_MAP_S + 1;           // perturba T' e S'
@@ -130,7 +127,7 @@ module takum_prng_core_pipe
         logic [2:0]    idx_t;    // proxima semente de resgate de cada mapa
         logic [2:0]    idx_s;
         log_int_t      va;       // interno: P, depois n
-        log_int_t      vb;       // interno: Q, depois u, depois d
+        log_int_t      vb;       // interno: Q, depois u, 4u, d
         logic [5:0]    mb_t;     // colhidos na perturbacao, usados na emissao
         logic [5:0]    mb_s;
         logic [WF-1:0] mt;
@@ -154,11 +151,12 @@ module takum_prng_core_pipe
     // ---- constantes no formato interno ---------------------------------------
     // Decodificadores de entrada constante: a sintese os dobra em constantes,
     // entao nao custam logica.
-    log_int_t k_one, k_mu, k_r36, k_125;
+    log_int_t k_one, k_mu, k_r16, k_c4, k_c5;
     takum_log_internal_from_takum #(.N(N)) u_k_one (.bits_i(C_ONE), .o(k_one));
     takum_log_internal_from_takum #(.N(N)) u_k_mu  (.bits_i(C_MU),  .o(k_mu));
-    takum_log_internal_from_takum #(.N(N)) u_k_r36 (.bits_i(C_R36), .o(k_r36));
-    takum_log_internal_from_takum #(.N(N)) u_k_125 (.bits_i(C_125), .o(k_125));
+    takum_log_internal_from_takum #(.N(N)) u_k_r16 (.bits_i(C_R16), .o(k_r16));
+    takum_log_internal_from_takum #(.N(N)) u_k_c4  (.bits_i(C_C4),  .o(k_c4));
+    takum_log_internal_from_takum #(.N(N)) u_k_c5  (.bits_i(C_C5),  .o(k_c5));
 
     // =========================================================================
     // ESTAGIO S_PRES_TS: as duas subtracoes 1-T e 1-S, em paralelo
@@ -210,23 +208,27 @@ module takum_prng_core_pipe
     takum_log_internal_to_takum #(.N(N)) u_enc_t (.i (t1_int), .bits_o (t1_takum));
 
     // =========================================================================
-    // ESTAGIO S_PRES_D: o numerador e a terceira subtracao, juntos
-    //
-    // 14,4u/(5-4u) reescalado por 1/4 vira 3,6u/(1,25-u): o denominador deixa
-    // de precisar de 4u e passa a ser uma subtracao direta sobre u. Some a
-    // multiplicacao E o estagio que existia so para separa-la da unidade
-    // Gauss-log -- os dois operandos aqui vem de registradores, que e a
-    // condicao que aquele estagio extra existia para garantir.
+    // ESTAGIO S_SPLIT: 14,4u e 4u, independentes entre si
     // =========================================================================
-    log_int_t n_int, res_gl_d;
+    log_int_t n_int, d4_int;
+    takum_log_internal_mul u_mul_n  (.a (k_r16), .b (tok[S_SPLIT].vb), .o (n_int));
+    takum_log_internal_mul u_mul_d4 (.a (k_c4),  .b (tok[S_SPLIT].vb), .o (d4_int));
 
-    takum_log_internal_mul u_mul_n (.a (k_r36), .b (tok[S_PRES_D].vb), .o (n_int));
-
+    // =========================================================================
+    // ESTAGIO S_PRES_D: a terceira subtracao, 5 - 4u
+    //
+    // Os operandos vem direto de um registrador, nao da saida de um
+    // multiplicador: por isso 14,4u/4u ganharam o seu proprio estagio em vez de
+    // ficarem no mesmo ciclo. A unidade Gauss-log comeca com uma multiplicacao
+    // por 1/(2 ln2) e um detector de bit mais significativo, e por um somador
+    // de 78 bits antes dela o caminho critico do anel mudaria de lugar.
+    // =========================================================================
+    log_int_t res_gl_d;
     takum_log_internal_add #(
         .EXTRA_STAGE (EXTRA_STAGE), .WAYS (1), .LUT_DIR (LUT_DIR)
     ) u_gl_d (
         .clk_i (clk_i), .en_i (en),
-        .a (k_125), .b (tok[S_PRES_D].vb), .sub_i (1'b1), .o (res_gl_d)
+        .a (k_c5), .b (tok[S_PRES_D].vb), .sub_i (1'b1), .o (res_gl_d)
     );
 
     // =========================================================================
@@ -325,9 +327,10 @@ module takum_prng_core_pipe
         nxt[S_MAP_T+1].t     = t1_takum;             // T' = MU*(T<1/2 ? T : P)
         nxt[S_MAP_T+1].vb    = u_int;                // u  = S*Q
 
-        nxt[S_PRES_D+1].va   = n_int;                // n  = 3,6u
+        nxt[S_SPLIT+1].va    = n_int;                // n  = 14,4u
+        nxt[S_SPLIT+1].vb    = d4_int;               // 4u
 
-        nxt[S_CATCH_D+1].vb  = res_gl_d;             // d  = 1,25 - u
+        nxt[S_CATCH_D+1].vb  = res_gl_d;             // d  = 5 - 4u
 
         nxt[S_MAP_S+1].s     = s1_takum;             // S' = n/d, ja com o ganho r
         nxt[S_MAP_S+1].lfsr  = lfsr_nxt;

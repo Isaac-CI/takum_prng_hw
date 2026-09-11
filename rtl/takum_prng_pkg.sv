@@ -30,27 +30,6 @@ package takum_prng_pkg;
   localparam logic [N-1:0] C_R16  = 32'h54ab3ddf;  // 0.9*16  14.400000005907
   localparam logic [N-1:0] C_C4   = 32'h4f17217f;  // 4.0     3.999999985435
   localparam logic [N-1:0] C_C5   = 32'h5070107e;  // 5.0     5.000000001342
-  localparam logic [N-1:0] C_R36  = 32'h4e3f5a3e;  // 0.9*4   3.599999987763
-  localparam logic [N-1:0] C_125  = 32'h4391fef9;  // 5/4     1.250000000231
-
-  // C_R36 E C_125 SAO A MESMA FRACAO REESCALADA. Dividindo numerador e
-  // denominador por 4,
-  //
-  //     14.4u / (5 - 4u)  ==  3.6u / (1.25 - u)
-  //
-  // e a multiplicacao 4u desaparece: o denominador passa a ser uma subtracao
-  // direta sobre u. So takum_prng_core_pipe usa esta forma, e la ela vale DOIS
-  // passos e nao um -- alem da multiplicacao, some o estagio que existia
-  // unicamente para separa-la da subtracao, porque o operando da unidade
-  // Gauss-log passa a vir de um registrador em vez da saida de um multiplicador.
-  //
-  // ATENCAO A COMPARACAO. As outras tres variantes continuam com C_R16/C_C4/C_C5,
-  // como o gerador linear -- entao o pipeline esta, por ora, algebricamente
-  // diferente das demais e do linear. Propagar esta forma e uma edicao de um
-  // passo de microcodigo em cada nucleo, e enquanto isso nao for feito uma
-  // comparacao direta de ciclos entre o pipeline e as outras mede tambem a
-  // diferenca de algebra.
-
   // C_R16 E A DOBRA DO GANHO r DO MAPA SENO DENTRO DO NUMERADOR. O mapa e
   //
   //     S' = r * 16u/(5 - 4u),   u = S(1 - S),   r = 0.9
@@ -144,7 +123,7 @@ package takum_prng_pkg;
   // Geradas por model/gen_pipe_seeds.py, que verifica que nenhuma palavra
   // takum colide -- dois fluxos com a mesma palavra teriam a mesma orbita, e
   // intercala-las encurtaria o periodo em vez de alonga-lo.
-  localparam int NPIPE = 12;
+  localparam int NPIPE = 13;
 
   localparam logic [N-1:0] T_INIT_P [0:NPIPE-1] = '{
       32'h2da1ecb6,   // 0.123456  0.123456000588
@@ -158,7 +137,8 @@ package takum_prng_pkg;
       32'h2f6a9691,   // 0.192837  0.192836999375
       32'h389c85fc,   // 0.630157  0.630156999528
       32'h3e082dff,   // 0.884261  0.884261001190
-      32'h3694b6a0    // 0.507943  0.507942998459
+      32'h3694b6a0,   // 0.507943  0.507942998459
+      32'h317a753b    // 0.268419  0.268418999570
   };
 
   localparam logic [N-1:0] S_INIT_P [0:NPIPE-1] = '{
@@ -173,7 +153,8 @@ package takum_prng_pkg;
       32'h29ad3a2e,   // 0.045921  0.045921000027
       32'h3c3c465e,   // 0.790346  0.790345999683
       32'h3626367d,   // 0.481263  0.481262998270
-      32'h3ec3cdad    // 0.925708  0.925707998539
+      32'h3ec3cdad,   // 0.925708  0.925707998539
+      32'h334da02b    // 0.337194  0.337193999667
   };
 
   localparam logic [31:0] LFSR_INIT_P [0:NPIPE-1] = '{
@@ -188,7 +169,8 @@ package takum_prng_pkg;
       32'h5EED0FF1,
       32'h0BADCAFE,
       32'hF00DBABE,
-      32'h3C3C5A5A 
+      32'h3C3C5A5A,
+      32'h9E3779B9 
   };
 
   localparam logic [31:0] LFSR_POLY  = 32'h80200003;

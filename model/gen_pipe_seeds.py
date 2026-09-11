@@ -3,7 +3,7 @@
 
 O nucleo em pipeline espacial mantem um fluxo por estagio, entao precisa de
 NPIPE estados iniciais distintos -- muito mais que os tres do nucleo
-intercalado. Digitar doze triplas a mao seria pedir para errar um digito
+intercalado. Digitar treze triplas a mao seria pedir para errar um digito
 sem que nada quebrasse de forma visivel, entao elas saem daqui, do mesmo
 codificador do modelo de ouro.
 
@@ -36,25 +36,25 @@ sys.path.insert(0, os.path.join(_HERE, '..', '..', 'takum_ula', 'lns',
 import takum_log as G   # noqa: E402
 
 N = 32
-NPIPE = 12
+NPIPE = 13
 
 # Os tres primeiros casam com T_INIT_M / S_INIT_M / LFSR_INIT_M do pacote.
 T_VALS = [
     0.123456, 0.654321, 0.723456,
     0.311527, 0.847219, 0.415803, 0.069314, 0.758291,
-    0.192837, 0.630157, 0.884261, 0.507943,
+    0.192837, 0.630157, 0.884261, 0.507943, 0.268419,
 ]
 
 S_VALS = [
     0.223456, 0.234567, 0.572391,
     0.881034, 0.146728, 0.703915, 0.359482, 0.612057,
-    0.045921, 0.790346, 0.481263, 0.925708,
+    0.045921, 0.790346, 0.481263, 0.925708, 0.337194,
 ]
 
 LFSR_VALS = [
     0xACE1ACE1, 0x5A5A1234, 0x13579BDF,
     0x2468ACE0, 0x7F3E1D5C, 0xC0FFEE11, 0x1BADB002, 0xDEADC0DE,
-    0x5EED0FF1, 0x0BADCAFE, 0xF00DBABE, 0x3C3C5A5A,
+    0x5EED0FF1, 0x0BADCAFE, 0xF00DBABE, 0x3C3C5A5A, 0x9E3779B9,
 ]
 
 
